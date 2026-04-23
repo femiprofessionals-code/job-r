@@ -3,7 +3,9 @@ import { cookies } from 'next/headers';
 import { publicEnv } from '@/lib/env';
 
 export async function createSupabaseServerClient() {
-  const cookieStore = await cookies();
+  // Next 14's `cookies()` is synchronous; `await` is a no-op and keeps forward
+  // compatibility with Next 15+ where the helper becomes async.
+  const cookieStore = await Promise.resolve(cookies());
   return createServerClient(publicEnv.supabaseUrl, publicEnv.supabaseAnonKey, {
     cookies: {
       getAll() {

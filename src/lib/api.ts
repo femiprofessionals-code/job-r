@@ -17,7 +17,10 @@ export function zodError(err: ZodError) {
   return apiFail('Validation failed', 422, err.flatten());
 }
 
-export async function parseJson<T>(req: Request, schema: z.ZodSchema<T>): Promise<T | NextResponse> {
+export async function parseJson<S extends z.ZodTypeAny>(
+  req: Request,
+  schema: S,
+): Promise<z.infer<S> | NextResponse> {
   let body: unknown;
   try {
     body = await req.json();
@@ -29,7 +32,10 @@ export async function parseJson<T>(req: Request, schema: z.ZodSchema<T>): Promis
   return parsed.data;
 }
 
-export function parseQuery<T>(url: URL, schema: z.ZodSchema<T>): T | NextResponse {
+export function parseQuery<S extends z.ZodTypeAny>(
+  url: URL,
+  schema: S,
+): z.infer<S> | NextResponse {
   const obj: Record<string, string> = {};
   for (const [k, v] of url.searchParams.entries()) obj[k] = v;
   const parsed = schema.safeParse(obj);

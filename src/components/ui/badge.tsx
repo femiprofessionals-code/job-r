@@ -5,11 +5,14 @@ export function Badge({
   className,
   variant = 'default',
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & { variant?: 'default' | 'outline' | 'secondary' }) {
+}: React.HTMLAttributes<HTMLDivElement> & {
+  variant?: 'default' | 'outline' | 'secondary' | 'destructive';
+}) {
   const variants = {
     default: 'bg-primary text-primary-foreground',
     outline: 'border text-foreground',
     secondary: 'bg-secondary text-secondary-foreground',
+    destructive: 'bg-destructive text-destructive-foreground',
   } as const;
   return (
     <div

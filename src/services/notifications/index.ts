@@ -1,15 +1,13 @@
 import { Resend } from 'resend';
 import { eq } from 'drizzle-orm';
-import { renderToStaticMarkup } from 'react-dom/server';
-import type { ReactElement } from 'react';
 import { db } from '@/db/client';
 import { notifications } from '@/db/schema/notifications';
 import {
-  DigestEmail,
-  DraftReadyEmail,
-  PayoutSentEmail,
-  ReviewAssignedEmail,
-  WelcomeEmail,
+  renderDigestEmail,
+  renderDraftReadyEmail,
+  renderPayoutSentEmail,
+  renderReviewAssignedEmail,
+  renderWelcomeEmail,
 } from './templates';
 
 let resendClient: Resend | null = null;
@@ -20,10 +18,6 @@ function client() {
   if (!key) throw new Error('RESEND_API_KEY missing');
   resendClient = new Resend(key);
   return resendClient;
-}
-
-function renderHtml(element: ReactElement): string {
-  return `<!doctype html>${renderToStaticMarkup(element)}`;
 }
 
 export type NotificationType =
@@ -82,7 +76,7 @@ export async function sendWelcome(userId: string, to: string, name: string, appU
     to,
     subject: 'Welcome to Job Radar',
     type: 'welcome',
-    html: renderHtml(WelcomeEmail({ name, appUrl })),
+    html: renderWelcomeEmail({ name, appUrl }),
   });
 }
 
@@ -99,7 +93,7 @@ export async function sendDigest(
     subject: `${matches.length} new job matches`,
     type: 'digest',
     payload: { count: matches.length },
-    html: renderHtml(DigestEmail({ name, matches, appUrl })),
+    html: renderDigestEmail({ name, matches, appUrl }),
   });
 }
 
@@ -117,7 +111,7 @@ export async function sendDraftReady(
     to,
     subject: `Draft ready: ${jobTitle} at ${company}`,
     type: 'draft_ready',
-    html: renderHtml(DraftReadyEmail({ name, jobTitle, company, appUrl, draftId })),
+    html: renderDraftReadyEmail({ name, jobTitle, company, appUrl, draftId }),
   });
 }
 
@@ -135,7 +129,7 @@ export async function sendReviewAssigned(
     to,
     subject: 'New review assigned',
     type: 'review_assigned',
-    html: renderHtml(ReviewAssignedEmail({ reviewerName, candidateName, dueAt, appUrl, reviewId })),
+    html: renderReviewAssignedEmail({ reviewerName, candidateName, dueAt, appUrl, reviewId }),
   });
 }
 
@@ -153,7 +147,7 @@ export async function sendReviewReminder(
     to,
     subject: 'Review reminder',
     type: 'review_reminder',
-    html: renderHtml(ReviewAssignedEmail({ reviewerName, candidateName, dueAt, appUrl, reviewId })),
+    html: renderReviewAssignedEmail({ reviewerName, candidateName, dueAt, appUrl, reviewId }),
   });
 }
 
@@ -168,6 +162,6 @@ export async function sendPayoutSent(
     to,
     subject: 'Payout sent',
     type: 'payout_sent',
-    html: renderHtml(PayoutSentEmail({ reviewerName, amount })),
+    html: renderPayoutSentEmail({ reviewerName, amount }),
   });
 }

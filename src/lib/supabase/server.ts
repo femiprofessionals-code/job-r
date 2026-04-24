@@ -27,9 +27,10 @@ export async function createSupabaseServerClient() {
 }
 
 /**
- * Returns the authenticated Supabase user and guarantees a matching
- * `profiles` row exists. Safe for routes that write rows with a FK to
- * profiles.id (e.g. career_tracks, drafts, matches, subscriptions).
+ * Returns the authenticated Supabase user. Best-effort upserts a matching
+ * `profiles` row, but never fails auth on a DB hiccup — the insert is
+ * wrapped in try/catch so a transient DB error doesn't cascade into a
+ * 401 for every page on the site.
  */
 export async function requireUser() {
   const supabase = await createSupabaseServerClient();
@@ -38,15 +39,19 @@ export async function requireUser() {
   } = await supabase.auth.getUser();
   if (!user) throw new Error('UNAUTHENTICATED');
 
-  await db
-    .insert(profiles)
-    .values({
-      id: user.id,
-      email: user.email ?? '',
-      fullName: (user.user_metadata?.full_name as string | undefined) ?? null,
-      avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
-    })
-    .onConflictDoNothing({ target: profiles.id });
+  try {
+    await db
+      .insert(profiles)
+      .values({
+        id: user.id,
+        email: user.email ?? '',
+        fullName: (user.user_metadata?.full_name as string | undefined) ?? null,
+        avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+      })
+      .onConflictDoNothing({ target: profiles.id });
+  } catch (err) {
+    console.error('[requireUser] profile upsert failed (non-fatal):', err);
+  }
 
   return user;
 }

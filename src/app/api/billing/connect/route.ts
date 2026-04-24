@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { reviewers } from '@/db/schema/users';

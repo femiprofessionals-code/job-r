@@ -59,8 +59,10 @@ export const generateDraftsFn = inngest.createFunction(
         : null;
       if (!baseResume) throw new Error('Profile has no base resume JSON');
 
-      const generated = await step.run('run-generator', () =>
-        generateTailoredDraft({
+      // Generate content + render + upload in one step. Bytes stay in-process;
+      // the step return is only JSON-safe strings (storage paths).
+      const artifacts = await step.run('generate-render-upload', async () => {
+        const generated = await generateTailoredDraft({
           profileResume: baseResume,
           job: {
             title: ctx.job.title,
@@ -68,38 +70,52 @@ export const generateDraftsFn = inngest.createFunction(
             description: ctx.job.description,
             skills: ctx.job.skills,
           },
-        }),
-      );
+        });
 
-      const pdfBytes = await step.run('render-pdf', () => renderResumePdf(generated.resume));
-      const docxBytes = await step.run('render-docx', () => renderResumeDocx(generated.resume));
-      const coverBytes = await step.run('render-cover', () =>
-        renderCoverLetterPdf(generated.coverLetter, generated.resume.fullName),
-      );
+        const pdfBytes = await renderResumePdf(generated.resume);
+        const docxBytes = await renderResumeDocx(generated.resume);
+        const coverBytes = await renderCoverLetterPdf(
+          generated.coverLetter,
+          generated.resume.fullName,
+        );
 
-      const [pdfPath, docxPath, coverPath] = await Promise.all([
-        uploadResumeArtifact(userId, draft.id, 'pdf', pdfBytes),
-        uploadResumeArtifact(userId, draft.id, 'docx', docxBytes),
-        uploadCoverLetterArtifact(userId, draft.id, coverBytes),
-      ]);
+        const [pdfPath, docxPath, coverPath] = await Promise.all([
+          uploadResumeArtifact(userId, draft.id, 'pdf', pdfBytes),
+          uploadResumeArtifact(userId, draft.id, 'docx', docxBytes),
+          uploadCoverLetterArtifact(userId, draft.id, coverBytes),
+        ]);
+
+        return {
+          resume: generated.resume,
+          coverLetter: generated.coverLetter,
+          pdfPath,
+          docxPath,
+          coverPath,
+          inputTokens: generated.usage.input_tokens,
+          outputTokens: generated.usage.output_tokens,
+        };
+      });
 
       await db
         .update(drafts)
         .set({
           status: 'ready',
-          resumeJson: generated.resume,
+          resumeJson: artifacts.resume,
           coverLetterText: [
-            generated.coverLetter.greeting,
-            generated.coverLetter.opening,
-            ...generated.coverLetter.body,
-            generated.coverLetter.closing,
-            generated.coverLetter.signature,
+            artifacts.coverLetter.greeting,
+            artifacts.coverLetter.opening,
+            ...artifacts.coverLetter.body,
+            artifacts.coverLetter.closing,
+            artifacts.coverLetter.signature,
           ].join('\n\n'),
-          resumePdfPath: pdfPath,
-          resumeDocxPath: docxPath,
-          coverLetterPdfPath: coverPath,
+          resumePdfPath: artifacts.pdfPath,
+          resumeDocxPath: artifacts.docxPath,
+          coverLetterPdfPath: artifacts.coverPath,
           model: 'claude-opus-4-7',
-          tokensUsed: generated.usage,
+          tokensUsed: {
+            input_tokens: artifacts.inputTokens,
+            output_tokens: artifacts.outputTokens,
+          },
           generatedAt: new Date(),
           updatedAt: new Date(),
         })

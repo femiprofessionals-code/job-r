@@ -11,11 +11,16 @@ export const dynamic = 'force-dynamic';
 
 export default async function TracksPage() {
   const user = await requireUser();
-  const rows = await db
-    .select()
-    .from(careerTracks)
-    .where(eq(careerTracks.userId, user.id))
-    .orderBy(desc(careerTracks.createdAt));
+  let rows: typeof careerTracks.$inferSelect[] = [];
+  try {
+    rows = await db
+      .select()
+      .from(careerTracks)
+      .where(eq(careerTracks.userId, user.id))
+      .orderBy(desc(careerTracks.createdAt));
+  } catch (err) {
+    console.error('[tracks page] query failed:', err);
+  }
 
   return (
     <div className="space-y-6">

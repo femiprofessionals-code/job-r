@@ -12,55 +12,108 @@ import { MatchScore } from '@/components/match-score';
 
 export const dynamic = 'force-dynamic';
 
+async function safeQuery<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    console.error(`[dashboard] ${label} failed:`, err);
+    return fallback;
+  }
+}
+
 export default async function DashboardPage() {
   const user = await requireUser();
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [[matchCount], [draftCount], [trackCount]] = await Promise.all([
-    db
-      .select({ n: count() })
-      .from(matches)
-      .where(and(eq(matches.userId, user.id), gte(matches.createdAt, since))),
-    db
-      .select({ n: count() })
-      .from(drafts)
-      .where(and(eq(drafts.userId, user.id), gte(drafts.createdAt, since))),
-    db
-      .select({ n: count() })
-      .from(careerTracks)
-      .where(and(eq(careerTracks.userId, user.id), eq(careerTracks.isActive, true))),
-  ]);
+  const matchCount = await safeQuery(
+    'matchCount',
+    async () => {
+      const [row] = await db
+        .select({ n: count() })
+        .from(matches)
+        .where(and(eq(matches.userId, user.id), gte(matches.createdAt, since)));
+      return row?.n ?? 0;
+    },
+    0,
+  );
 
-  const topMatches = await db
-    .select({
-      id: matches.id,
-      score: matches.overallScore,
-      createdAt: matches.createdAt,
-      jobId: jobs.id,
-      title: jobs.title,
-      company: companies.name,
-    })
-    .from(matches)
-    .innerJoin(jobs, eq(jobs.id, matches.jobId))
-    .innerJoin(companies, eq(companies.id, jobs.companyId))
-    .where(eq(matches.userId, user.id))
-    .orderBy(desc(matches.overallScore), desc(matches.createdAt))
-    .limit(8);
+  const draftCount = await safeQuery(
+    'draftCount',
+    async () => {
+      const [row] = await db
+        .select({ n: count() })
+        .from(drafts)
+        .where(and(eq(drafts.userId, user.id), gte(drafts.createdAt, since)));
+      return row?.n ?? 0;
+    },
+    0,
+  );
 
-  const recentDrafts = await db
-    .select({
-      id: drafts.id,
-      status: drafts.status,
-      createdAt: drafts.createdAt,
-      title: jobs.title,
-      company: companies.name,
-    })
-    .from(drafts)
-    .innerJoin(jobs, eq(jobs.id, drafts.jobId))
-    .innerJoin(companies, eq(companies.id, jobs.companyId))
-    .where(eq(drafts.userId, user.id))
-    .orderBy(desc(drafts.createdAt))
-    .limit(5);
+  const trackCount = await safeQuery(
+    'trackCount',
+    async () => {
+      const [row] = await db
+        .select({ n: count() })
+        .from(careerTracks)
+        .where(and(eq(careerTracks.userId, user.id), eq(careerTracks.isActive, true)));
+      return row?.n ?? 0;
+    },
+    0,
+  );
+
+  const topMatches = await safeQuery(
+    'topMatches',
+    () =>
+      db
+        .select({
+          id: matches.id,
+          score: matches.overallScore,
+          createdAt: matches.createdAt,
+          jobId: jobs.id,
+          title: jobs.title,
+          company: companies.name,
+        })
+        .from(matches)
+        .innerJoin(jobs, eq(jobs.id, matches.jobId))
+        .innerJoin(companies, eq(companies.id, jobs.companyId))
+        .where(eq(matches.userId, user.id))
+        .orderBy(desc(matches.overallScore), desc(matches.createdAt))
+        .limit(8),
+    [] as Array<{
+      id: string;
+      score: number;
+      createdAt: Date;
+      jobId: string;
+      title: string;
+      company: string;
+    }>,
+  );
+
+  const recentDrafts = await safeQuery(
+    'recentDrafts',
+    () =>
+      db
+        .select({
+          id: drafts.id,
+          status: drafts.status,
+          createdAt: drafts.createdAt,
+          title: jobs.title,
+          company: companies.name,
+        })
+        .from(drafts)
+        .innerJoin(jobs, eq(jobs.id, drafts.jobId))
+        .innerJoin(companies, eq(companies.id, jobs.companyId))
+        .where(eq(drafts.userId, user.id))
+        .orderBy(desc(drafts.createdAt))
+        .limit(5),
+    [] as Array<{
+      id: string;
+      status: string;
+      createdAt: Date;
+      title: string;
+      company: string;
+    }>,
+  );
 
   return (
     <div className="space-y-8">
@@ -70,9 +123,9 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="New matches (7d)" value={matchCount?.n ?? 0} />
-        <StatCard label="Drafts (7d)" value={draftCount?.n ?? 0} />
-        <StatCard label="Active tracks" value={trackCount?.n ?? 0} />
+        <StatCard label="New matches (7d)" value={matchCount} />
+        <StatCard label="Drafts (7d)" value={draftCount} />
+        <StatCard label="Active tracks" value={trackCount} />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

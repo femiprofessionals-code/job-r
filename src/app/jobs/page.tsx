@@ -24,23 +24,30 @@ export default async function JobsFeedPage({ searchParams }: { searchParams: Sea
     );
   }
 
-  const rows = await db
-    .select({
-      id: jobs.id,
-      title: jobs.title,
-      locationRaw: jobs.locationRaw,
-      locationType: jobs.locationType,
-      function: jobs.function,
-      seniority: jobs.seniority,
-      skills: jobs.skills,
-      company: companies.name,
-      companyLogo: companies.logoUrl,
-    })
-    .from(jobs)
-    .innerJoin(companies, eq(companies.id, jobs.companyId))
-    .where(and(...filters))
-    .orderBy(desc(jobs.postedAt), desc(jobs.createdAt))
-    .limit(40);
+  const rows = await (async () => {
+    try {
+      return await db
+        .select({
+          id: jobs.id,
+          title: jobs.title,
+          locationRaw: jobs.locationRaw,
+          locationType: jobs.locationType,
+          function: jobs.function,
+          seniority: jobs.seniority,
+          skills: jobs.skills,
+          company: companies.name,
+          companyLogo: companies.logoUrl,
+        })
+        .from(jobs)
+        .innerJoin(companies, eq(companies.id, jobs.companyId))
+        .where(and(...filters))
+        .orderBy(desc(jobs.postedAt), desc(jobs.createdAt))
+        .limit(40);
+    } catch (err) {
+      console.error('[jobs page] query failed:', err);
+      return [];
+    }
+  })();
 
   return (
     <div className="space-y-6">

@@ -12,20 +12,31 @@ export const dynamic = 'force-dynamic';
 
 export default async function DraftsPage() {
   const user = await requireUser();
-  const rows = await db
-    .select({
-      id: drafts.id,
-      status: drafts.status,
-      createdAt: drafts.createdAt,
-      title: jobs.title,
-      company: companies.name,
-    })
-    .from(drafts)
-    .innerJoin(jobs, eq(jobs.id, drafts.jobId))
-    .innerJoin(companies, eq(companies.id, jobs.companyId))
-    .where(eq(drafts.userId, user.id))
-    .orderBy(desc(drafts.createdAt))
-    .limit(40);
+  let rows: Array<{
+    id: string;
+    status: typeof drafts.$inferSelect['status'];
+    createdAt: Date;
+    title: string;
+    company: string;
+  }> = [];
+  try {
+    rows = await db
+      .select({
+        id: drafts.id,
+        status: drafts.status,
+        createdAt: drafts.createdAt,
+        title: jobs.title,
+        company: companies.name,
+      })
+      .from(drafts)
+      .innerJoin(jobs, eq(jobs.id, drafts.jobId))
+      .innerJoin(companies, eq(companies.id, jobs.companyId))
+      .where(eq(drafts.userId, user.id))
+      .orderBy(desc(drafts.createdAt))
+      .limit(40);
+  } catch (err) {
+    console.error('[drafts page] query failed:', err);
+  }
 
   return (
     <div className="space-y-6">

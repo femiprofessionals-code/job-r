@@ -5,6 +5,7 @@ import { desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/db/client';
 import { careerTracks } from '@/db/schema/careerTracks';
+import { profiles } from '@/db/schema/users';
 import { requireUser } from '@/lib/supabase/server';
 import { apiFail, apiOk, parseJson } from '@/lib/api';
 
@@ -74,24 +75,48 @@ export async function POST(req: Request) {
   }
   const body = await parseJson(req, createSchema);
   if (body instanceof NextResponse) return body;
-  const [row] = await db
-    .insert(careerTracks)
-    .values({
-      userId: user.id,
-      name: body.name,
-      targetFunction: body.targetFunction,
-      targetSeniority: body.targetSeniority,
-      targetLocationType: body.targetLocationType ?? null,
-      preferredCities: body.preferredCities,
-      preferredCountries: body.preferredCountries,
-      mustHaveSkills: body.mustHaveSkills,
-      niceToHaveSkills: body.niceToHaveSkills,
-      excludedCompanies: body.excludedCompanies,
-      targetCompanies: body.targetCompanies,
-      minSalary: body.minSalary ?? null,
-      salaryCurrency: body.salaryCurrency ?? 'USD',
-      minMatchScore: body.minMatchScore,
-    })
-    .returning();
-  return apiOk({ track: row });
+
+  // Ensure the profile row exists before the FK insert. If this fails, surface
+  // the real error rather than letting the careerTracks insert raise a generic
+  // FK violation later.
+  try {
+    await db
+      .insert(profiles)
+      .values({
+        id: user.id,
+        email: user.email ?? `${user.id}@unknown.local`,
+        fullName: (user.user_metadata?.full_name as string | undefined) ?? null,
+        avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
+      })
+      .onConflictDoNothing({ target: profiles.id });
+  } catch (err) {
+    console.error('[tracks POST] profile upsert failed:', err);
+    return apiFail(`Profile setup failed: ${(err as Error).message}`, 500);
+  }
+
+  try {
+    const [row] = await db
+      .insert(careerTracks)
+      .values({
+        userId: user.id,
+        name: body.name,
+        targetFunction: body.targetFunction,
+        targetSeniority: body.targetSeniority,
+        targetLocationType: body.targetLocationType ?? null,
+        preferredCities: body.preferredCities,
+        preferredCountries: body.preferredCountries,
+        mustHaveSkills: body.mustHaveSkills,
+        niceToHaveSkills: body.niceToHaveSkills,
+        excludedCompanies: body.excludedCompanies,
+        targetCompanies: body.targetCompanies,
+        minSalary: body.minSalary ?? null,
+        salaryCurrency: body.salaryCurrency ?? 'USD',
+        minMatchScore: body.minMatchScore,
+      })
+      .returning();
+    return apiOk({ track: row });
+  } catch (err) {
+    console.error('[tracks POST] insert failed:', err);
+    return apiFail(`Track insert failed: ${(err as Error).message}`, 500);
+  }
 }

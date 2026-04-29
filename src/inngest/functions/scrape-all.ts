@@ -9,18 +9,12 @@ export const scrapeAll = inngest.createFunction(
   async ({ step }) => {
     const due = await step.run('select-due-companies', async () => {
       return db
-        .select({ id: companies.id, name: companies.name, interval: companies.scrapeIntervalMinutes })
+        .select({ id: companies.id, name: companies.name })
         .from(companies)
         .where(
           and(
             eq(companies.status, 'approved'),
-            or(
-              isNull(companies.lastScrapedAt),
-              lte(
-                companies.lastScrapedAt,
-                sql`now() - (companies.scrape_interval_minutes || ' minutes')::interval`,
-              ),
-            ),
+            or(isNull(companies.lastScrapedAt), lte(companies.lastScrapedAt, sql`now() - interval '1 hour'`)),
           ),
         );
     });

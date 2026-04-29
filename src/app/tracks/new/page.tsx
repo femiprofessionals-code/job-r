@@ -58,7 +58,7 @@ export default function NewTrackPage() {
       setError(body.error ?? 'Failed to create track');
       return;
     }
-    router.push('/tracks');
+    router.push(`/tracks?flash=${encodeURIComponent('Track created. Matches will populate as new jobs come in.')}&tone=success`);
     router.refresh();
   }
 

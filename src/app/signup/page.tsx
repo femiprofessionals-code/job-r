@@ -34,10 +34,12 @@ export default function SignupPage() {
       return;
     }
     if (!data.session) {
-      setNotice('Check your email to confirm your account.');
+      setNotice('Account created — check your email to confirm.');
       return;
     }
-    router.push('/onboarding');
+    router.push(
+      `/onboarding?flash=${encodeURIComponent("Account created. Let's set up your first career track.")}&tone=success`,
+    );
     router.refresh();
   }
 

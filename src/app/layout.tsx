@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Nav } from '@/components/nav';
+import { FlashToast } from '@/components/flash-toast';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -12,6 +14,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="min-h-screen bg-background font-sans antialiased">
         <Nav />
+        <Suspense>
+          <FlashToast />
+        </Suspense>
         <main className="container py-8">{children}</main>
       </body>
     </html>

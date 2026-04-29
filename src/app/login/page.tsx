@@ -28,7 +28,8 @@ export default function LoginPage() {
       setError(error.message);
       return;
     }
-    router.push(next);
+    const sep = next.includes('?') ? '&' : '?';
+    router.push(`${next}${sep}flash=${encodeURIComponent('Welcome back!')}&tone=success`);
     router.refresh();
   }
 

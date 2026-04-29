@@ -5,7 +5,7 @@ export const scrapeCompanyFn = inngest.createFunction(
   {
     id: 'scrape-company',
     name: 'Scrape a single company',
-    concurrency: { limit: 8, key: 'event.data.companyId' },
+    concurrency: { limit: 5, key: 'event.data.companyId' },
     retries: 2,
   },
   { event: 'scrape/company.requested' },

@@ -6,9 +6,17 @@ import { drafts } from '@/db/schema/drafts';
 import { jobs } from '@/db/schema/jobs';
 import { companies } from '@/db/schema/companies';
 import { careerTracks } from '@/db/schema/careerTracks';
+import { profiles } from '@/db/schema/users';
 import { requireUser } from '@/lib/supabase/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MatchScore } from '@/components/match-score';
+
+function firstName(full: string | null | undefined, fallback = 'there'): string {
+  if (!full) return fallback;
+  const trimmed = full.trim();
+  if (!trimmed) return fallback;
+  return trimmed.split(/\s+/)[0];
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +32,22 @@ async function safeQuery<T>(label: string, fn: () => Promise<T>, fallback: T): P
 export default async function DashboardPage() {
   const user = await requireUser();
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const profileName = await safeQuery(
+    'profileName',
+    async () => {
+      const [row] = await db
+        .select({ fullName: profiles.fullName })
+        .from(profiles)
+        .where(eq(profiles.id, user.id))
+        .limit(1);
+      return row?.fullName ?? null;
+    },
+    null as string | null,
+  );
+  const greetingName = firstName(
+    profileName ?? (user.user_metadata?.full_name as string | undefined),
+  );
 
   const matchCount = await safeQuery(
     'matchCount',
@@ -118,8 +142,8 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Welcome back. Here&apos;s what moved this week.</p>
+        <h1 className="text-2xl font-semibold">Welcome back, {greetingName}</h1>
+        <p className="text-sm text-muted-foreground">Here&apos;s what moved this week.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

@@ -7,6 +7,7 @@ import { companies } from '@/db/schema/companies';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { stripHtml } from '@/services/scraper/normalizer';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,9 @@ export default async function JobDetailPage({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="whitespace-pre-wrap text-sm leading-relaxed">{job.description}</div>
+          <div className="whitespace-pre-wrap text-sm leading-relaxed">
+            {stripHtml(job.description)}
+          </div>
           <div className="flex gap-3">
             <Button asChild>
               <a href={job.applyUrl} target="_blank" rel="noreferrer">

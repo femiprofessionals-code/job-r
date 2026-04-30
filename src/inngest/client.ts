@@ -13,6 +13,7 @@ type Events = {
   'reviews/accepted': { data: { reviewId: string } };
   'payouts/process': { data: { reviewId: string } };
   'users/signed_up': { data: { userId: string; email: string; name?: string } };
+  'backfill/classify.requested': { data: Record<string, never> };
 };
 
 export const inngest = new Inngest({

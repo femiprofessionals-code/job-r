@@ -8,6 +8,7 @@ import { reviewReminderFn } from './review-reminder';
 import { processPayoutFn } from './process-payout';
 import { usersSignedUpFn } from './users-signed-up';
 import { reviewAcceptedFn } from './review-accepted';
+import { backfillClassifyFn } from './backfill-classify';
 
 export const functions = [
   scrapeAll,
@@ -20,4 +21,5 @@ export const functions = [
   processPayoutFn,
   usersSignedUpFn,
   reviewAcceptedFn,
+  backfillClassifyFn,
 ];

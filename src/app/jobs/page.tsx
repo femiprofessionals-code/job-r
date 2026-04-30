@@ -5,21 +5,25 @@ import { jobs } from '@/db/schema/jobs';
 import { companies } from '@/db/schema/companies';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { JobFilters } from './filters';
 
 export const dynamic = 'force-dynamic';
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 50;
 
 type SearchParams = Promise<{
   q?: string;
   function?: string;
   seniority?: string;
   locationType?: string;
+  page?: string;
 }>;
 
 export default async function JobsFeedPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
+
   const filters = [eq(jobs.status, 'open' as const)];
   if (sp.function) filters.push(eq(jobs.function, sp.function as never));
   if (sp.seniority) filters.push(eq(jobs.seniority, sp.seniority as never));
@@ -51,7 +55,8 @@ export default async function JobsFeedPage({ searchParams }: { searchParams: Sea
           .innerJoin(companies, eq(companies.id, jobs.companyId))
           .where(and(...filters))
           .orderBy(desc(jobs.postedAt), desc(jobs.createdAt))
-          .limit(PAGE_SIZE);
+          .limit(PAGE_SIZE)
+          .offset((page - 1) * PAGE_SIZE);
       } catch (err) {
         console.error('[jobs page] query failed:', err);
         return [];
@@ -72,6 +77,19 @@ export default async function JobsFeedPage({ searchParams }: { searchParams: Sea
   ]);
 
   const total = totalRow?.n ?? rows.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const start = (page - 1) * PAGE_SIZE + 1;
+  const end = (page - 1) * PAGE_SIZE + rows.length;
+
+  function pageHref(n: number) {
+    const next = new URLSearchParams();
+    if (sp.q) next.set('q', sp.q);
+    if (sp.function) next.set('function', sp.function);
+    if (sp.seniority) next.set('seniority', sp.seniority);
+    if (sp.locationType) next.set('locationType', sp.locationType);
+    if (n > 1) next.set('page', String(n));
+    return `/jobs${next.toString() ? `?${next.toString()}` : ''}`;
+  }
 
   return (
     <div className="space-y-6">
@@ -81,7 +99,7 @@ export default async function JobsFeedPage({ searchParams }: { searchParams: Sea
           <p className="text-sm text-muted-foreground">
             {total === 0
               ? 'No open jobs match your filters yet.'
-              : `Showing ${rows.length} of ${total} open ${total === 1 ? 'role' : 'roles'}.`}
+              : `Showing ${start}–${end} of ${total} open ${total === 1 ? 'role' : 'roles'}.`}
           </p>
         </div>
         <JobFilters />
@@ -120,11 +138,24 @@ export default async function JobsFeedPage({ searchParams }: { searchParams: Sea
         ))}
       </div>
 
-      {total > rows.length && (
-        <p className="text-center text-sm text-muted-foreground">
-          Showing first {rows.length} results. Refine with filters or search to narrow down.
-        </p>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <Button asChild variant="outline" size="sm" disabled={page <= 1}>
+            <Link href={pageHref(Math.max(1, page - 1))} aria-disabled={page <= 1}>
+              ← Previous
+            </Link>
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <Button asChild variant="outline" size="sm" disabled={page >= totalPages}>
+            <Link href={pageHref(Math.min(totalPages, page + 1))} aria-disabled={page >= totalPages}>
+              Next →
+            </Link>
+          </Button>
+        </div>
       )}
     </div>
   );
 }
+

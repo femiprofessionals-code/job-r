@@ -10,6 +10,14 @@ const LINKS = [
   { href: '/drafts', label: 'Drafts' },
 ];
 
+function initialFor(user: { email?: string | null; user_metadata?: { full_name?: string | null } }) {
+  const name = user.user_metadata?.full_name?.trim();
+  if (name && name.length > 0) return name[0].toUpperCase();
+  const email = user.email?.trim();
+  if (email && email.length > 0) return email[0].toUpperCase();
+  return '?';
+}
+
 export async function Nav() {
   const user = await getOptionalUser();
   return (
@@ -32,6 +40,13 @@ export async function Nav() {
             <form action="/api/auth/signout" method="post">
               <button className="text-muted-foreground hover:text-foreground">Sign out</button>
             </form>
+            <Link
+              href="/profile/resume"
+              title={user.user_metadata?.full_name ?? user.email ?? 'Profile'}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground hover:opacity-90"
+            >
+              {initialFor(user)}
+            </Link>
           </nav>
         ) : (
           <nav className="flex items-center gap-4 text-sm sm:gap-6">

@@ -111,7 +111,7 @@ export const generateDraftsFn = inngest.createFunction(
           resumePdfPath: artifacts.pdfPath,
           resumeDocxPath: artifacts.docxPath,
           coverLetterPdfPath: artifacts.coverPath,
-          model: 'claude-opus-4-7',
+          model: 'groq/llama-3.3-70b-versatile',
           tokensUsed: {
             input_tokens: artifacts.inputTokens,
             output_tokens: artifacts.outputTokens,

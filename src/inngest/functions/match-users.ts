@@ -12,8 +12,8 @@ export const matchUsersFn = inngest.createFunction(
   { id: 'match-users', name: 'Match classified jobs against active career tracks', retries: 2 },
   { event: 'jobs/classified' },
   async ({ event, step }) => {
-    const { jobIds } = event.data;
-    if (jobIds.length === 0) return { created: 0 };
+    const jobIds = event?.data?.jobIds;
+    if (!jobIds || jobIds.length === 0) return { created: 0 };
 
     const jobRows = await step.run('load-jobs', async () =>
       db

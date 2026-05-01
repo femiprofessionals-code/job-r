@@ -6,6 +6,7 @@ const LINKS = [
   { href: '/jobs', label: 'Jobs' },
   { href: '/matches', label: 'Matches' },
   { href: '/tracks', label: 'Career tracks' },
+  { href: '/profile/resume', label: 'Resume' },
   { href: '/drafts', label: 'Drafts' },
 ];
 export async function Nav() {

@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 
 export const classifierOutputSchema = z.object({
@@ -50,29 +49,43 @@ export async function classifyJob(input: {
   description: string;
   locationRaw?: string | null;
 }): Promise<ClassifierOutput> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY missing');
-  const anthropic = new Anthropic({ apiKey });
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error('GROQ_API_KEY missing');
 
-  const resp = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
-    system: SYSTEM,
-    messages: [
-      {
-        role: 'user',
-        content: `Title: ${input.title}\nLocation: ${input.locationRaw ?? 'unknown'}\n\nDescription:\n${input.description.slice(0, 18_000)}`,
-      },
-    ],
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0,
+      max_tokens: 1024,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: SYSTEM },
+        {
+          role: 'user',
+          content: `Title: ${input.title}\nLocation: ${input.locationRaw ?? 'unknown'}\n\nDescription:\n${input.description.slice(0, 18_000)}`,
+        },
+      ],
+    }),
   });
 
-  const text = resp.content
-    .filter((b): b is Extract<typeof b, { type: 'text' }> => b.type === 'text')
-    .map((b) => b.text)
-    .join('');
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(`Groq ${resp.status}: ${errText}`);
+  }
+
+  const json = (await resp.json()) as {
+    choices: { message: { content: string } }[];
+  };
+  const text = json.choices?.[0]?.message?.content;
+  if (!text) throw new Error('Classifier returned empty content');
+
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
   if (start === -1 || end === -1) throw new Error('Classifier returned no JSON');
-  const parsed = classifierOutputSchema.parse(JSON.parse(text.slice(start, end + 1)));
-  return parsed;
+  return classifierOutputSchema.parse(JSON.parse(text.slice(start, end + 1)));
 }

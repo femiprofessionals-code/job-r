@@ -1,8 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { coverLetterSchema, resumeJsonSchema, type CoverLetter, type ResumeJson } from './schema';
 import { WRITING_RULES } from './writing-rules';
 
-const MODEL = 'claude-opus-4-7';
+const MODEL = 'llama-3.3-70b-versatile';
 
 export type ResumeGenerationInput = {
   profileResume: ResumeJson;
@@ -17,7 +16,7 @@ export type ResumeGenerationInput = {
 export type ResumeGenerationOutput = {
   resume: ResumeJson;
   coverLetter: CoverLetter;
-  usage: Anthropic.Messages.Usage;
+  usage: { input_tokens: number; output_tokens: number };
 };
 
 const RESUME_SYSTEM = `You are a senior resume writer. You produce a tailored resume as JSON and a
@@ -34,9 +33,8 @@ function extractJson(text: string): unknown {
 export async function generateTailoredDraft(
   input: ResumeGenerationInput,
 ): Promise<ResumeGenerationOutput> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY missing');
-  const anthropic = new Anthropic({ apiKey });
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error('GROQ_API_KEY missing');
 
   const userMessage = `TARGET JOB
 Company: ${input.job.companyName}
@@ -55,21 +53,46 @@ Produce a tailored resume and cover letter as:
   "coverLetter": { "greeting": string, "opening": string, "body": [string,...], "closing": string, "signature": string }
 }`;
 
-  const resp = await anthropic.messages.create({
-    model: MODEL,
-    max_tokens: 8192,
-    system: RESUME_SYSTEM,
-    messages: [{ role: 'user', content: userMessage }],
+  const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      temperature: 0.3,
+      max_tokens: 8192,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: RESUME_SYSTEM },
+        { role: 'user', content: userMessage },
+      ],
+    }),
   });
 
-  const text = resp.content
-    .filter((b): b is Extract<typeof b, { type: 'text' }> => b.type === 'text')
-    .map((b) => b.text)
-    .join('');
-  const parsed = extractJson(text) as { resume: unknown; coverLetter: unknown };
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(`Groq ${resp.status}: ${errText}`);
+  }
 
+  const json = (await resp.json()) as {
+    choices: { message: { content: string } }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+  const text = json.choices?.[0]?.message?.content;
+  if (!text) throw new Error('Resume engine returned empty content');
+
+  const parsed = extractJson(text) as { resume: unknown; coverLetter: unknown };
   const resume = resumeJsonSchema.parse(parsed.resume);
   const coverLetter = coverLetterSchema.parse(parsed.coverLetter);
 
-  return { resume, coverLetter, usage: resp.usage };
+  return {
+    resume,
+    coverLetter,
+    usage: {
+      input_tokens: json.usage?.prompt_tokens ?? 0,
+      output_tokens: json.usage?.completion_tokens ?? 0,
+    },
+  };
 }

@@ -4,10 +4,10 @@ import { getOptionalUser } from '@/lib/supabase/server';
 const LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/jobs', label: 'Jobs' },
+  { href: '/matches', label: 'Matches' },
   { href: '/tracks', label: 'Career tracks' },
   { href: '/drafts', label: 'Drafts' },
 ];
-
 export async function Nav() {
   const user = await getOptionalUser();
   return (

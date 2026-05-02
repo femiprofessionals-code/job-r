@@ -8,6 +8,7 @@ const LINKS = [
   { href: '/tracks', label: 'Career tracks' },
   { href: '/profile/resume', label: 'Resume' },
   { href: '/drafts', label: 'Drafts' },
+  { href: '/billing', label: 'Billing' },
 ];
 
 function initialFor(user: { email?: string | null; user_metadata?: { full_name?: string | null } }) {

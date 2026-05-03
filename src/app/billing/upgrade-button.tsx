@@ -16,12 +16,13 @@ export function UpgradeButton({ plan }: { plan: 'pro' | 'premium' }) {
       body: JSON.stringify({ plan }),
     });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok || !j.url) {
-      setError(j.error ?? 'Could not start checkout');
+    const url = j?.data?.url ?? j?.url;
+    if (!res.ok || !url) {
+      setError(j?.error ?? 'Could not start checkout');
       setLoading(false);
       return;
     }
-    window.location.href = j.url;
+    window.location.href = url;
   }
 
   return (

@@ -13,14 +13,23 @@ export default function Home() {
         Job Radar scrapes company boards hourly, matches openings to your career track, and drafts a
         resume and cover letter before the role gets stale.
       </p>
-      <div className="mt-10 flex items-center justify-center gap-3">
+      <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
         <Button asChild size="lg">
-          <Link href="/signup">Start free</Link>
+          <Link href="/signup">I&apos;m looking for jobs</Link>
         </Button>
         <Button asChild size="lg" variant="outline">
+          <Link href="/signup/reviewer">I want to review drafts</Link>
+        </Button>
+        <Button asChild size="lg" variant="ghost">
           <Link href="/jobs">Browse jobs</Link>
         </Button>
       </div>
+      <p className="mt-6 text-sm text-muted-foreground">
+        Already have an account?{' '}
+        <Link href="/login" className="underline">
+          Log in
+        </Link>
+      </p>
     </div>
   );
 }

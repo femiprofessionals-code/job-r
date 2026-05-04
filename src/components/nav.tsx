@@ -9,8 +9,8 @@ const LINKS = [
   { href: '/profile/resume', label: 'Resume' },
   { href: '/drafts', label: 'Drafts' },
   { href: '/billing', label: 'Billing' },
+  { href: '/reviewer/apply', label: 'Become a reviewer' },
 ];
-
 function initialFor(user: { email?: string | null; user_metadata?: { full_name?: string | null } }) {
   const name = user.user_metadata?.full_name?.trim();
   if (name && name.length > 0) return name[0].toUpperCase();

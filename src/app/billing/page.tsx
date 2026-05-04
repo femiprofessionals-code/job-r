@@ -8,6 +8,8 @@ import { UpgradeButton } from './upgrade-button';
 
 export const dynamic = 'force-dynamic';
 
+const PLAN_RANK = { free: 0, pro: 1, premium: 2 } as const;
+
 const PLANS = [
   {
     plan: 'free' as const,
@@ -56,6 +58,7 @@ export default async function BillingPage({
   const sp = await searchParams;
   const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.userId, user.id));
   const currentPlan = (sub?.plan ?? 'free') as 'free' | 'pro' | 'premium';
+  const currentRank = PLAN_RANK[currentPlan];
 
   return (
     <div className="space-y-6">
@@ -79,7 +82,10 @@ export default async function BillingPage({
 
       <div className="grid gap-4 md:grid-cols-3">
         {PLANS.map((p) => {
+          const rank = PLAN_RANK[p.plan];
           const isCurrent = p.plan === currentPlan;
+          const isUpgrade = !isCurrent && rank > currentRank;
+          const isDowngrade = !isCurrent && rank < currentRank;
           return (
             <Card key={p.plan} className={isCurrent ? 'border-primary' : ''}>
               <CardHeader>
@@ -101,12 +107,16 @@ export default async function BillingPage({
                     </li>
                   ))}
                 </ul>
-                {p.plan !== 'free' && !isCurrent && <UpgradeButton plan={p.plan} />}
-                {p.plan === 'free' && !isCurrent && (
-                  <p className="text-xs text-muted-foreground">
-                    Manage your subscription in Stripe to downgrade.
-                  </p>
-                )}
+                {isUpgrade && p.plan !== 'free' && <UpgradeButton plan={p.plan} />}
+               {isDowngrade && (
+  <p className="text-xs text-muted-foreground">
+    To downgrade to {p.name}, contact support at{' '}
+    <a href="mailto:support@jobradar.app" className="underline">
+      support@jobradar.app
+    </a>
+    .
+  </p>
+)}
               </CardContent>
             </Card>
           );
